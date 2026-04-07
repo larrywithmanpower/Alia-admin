@@ -122,9 +122,8 @@
                 </div>
                 <input v-if="imageMode === 'url'" v-model="form.image_url" type="url" placeholder="https://…" />
                 <div v-else class="upload-area">
-                  <input ref="fileInput" type="file" accept="image/*" class="file-input" @change="handleFileChange" />
-                  <div class="upload-box"
-                    @click="fileInput.value.click()"
+                  <div
+                    class="upload-box"
                     @dragover.prevent="isDragging = true"
                     @dragleave="isDragging = false"
                     @drop.prevent="handleDrop"
@@ -137,6 +136,7 @@
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                       <span>點擊選擇圖片</span>
                     </template>
+                    <input ref="fileInput" type="file" accept="image/*" class="file-input" @change="handleFileChange" />
                   </div>
                   <p v-if="uploadingImage" class="upload-status">上傳中…</p>
                 </div>
@@ -676,9 +676,21 @@ async function deleteProduct() {
 
 .upload-area { display: flex; flex-direction: column; gap: 8px; }
 
-.file-input { display: none; }
+.file-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
 
 .upload-box {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   border: 1px dashed var(--border);
   border-radius: 2px;
   height: 120px;
