@@ -115,8 +115,26 @@
               </div>
 
               <div class="field span-2">
-                <label>商品圖片網址</label>
-                <input v-model="form.image_url" type="url" placeholder="https://…" />
+                <label>商品圖片</label>
+                <div class="image-tabs">
+                  <button type="button" class="image-tab" :class="{ active: imageMode === 'url' }" @click="imageMode = 'url'">貼上網址</button>
+                  <button type="button" class="image-tab" :class="{ active: imageMode === 'upload' }" @click="imageMode = 'upload'">上傳圖片</button>
+                </div>
+                <input v-if="imageMode === 'url'" v-model="form.image_url" type="url" placeholder="https://…" />
+                <div v-else class="upload-area">
+                  <input ref="fileInput" type="file" accept="image/*" class="file-input" @change="handleFileChange" />
+                  <div class="upload-box" @click="fileInput.click()">
+                    <template v-if="uploadPreview">
+                      <img :src="uploadPreview" class="upload-preview" />
+                    </template>
+                    <template v-else>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                      <span>點擊選擇圖片</span>
+                    </template>
+                  </div>
+                  <p v-if="uploadingImage" class="upload-status">上傳中…</p>
+                </div>
+                <p v-if="form.image_url && imageMode === 'url'" class="image-hint">目前圖片：<a :href="form.image_url" target="_blank">預覽</a></p>
               </div>
 
               <div class="field span-2">
@@ -187,6 +205,10 @@ const editingProduct = ref(null)
 const deleteTarget = ref(null)
 const saving = ref(false)
 const formError = ref('')
+const imageMode = ref('url')
+const fileInput = ref(null)
+const uploadPreview = ref(null)
+const uploadingImage = ref(false)
 
 const defaultForm = () => ({
   name: '',
@@ -220,10 +242,17 @@ categoryNames.value = (catData || []).map(c => c.name)
 
 await fetchProducts()
 
+function resetImageState() {
+  imageMode.value = 'url'
+  uploadPreview.value = null
+  uploadingImage.value = false
+}
+
 function openNew() {
   editingProduct.value = null
   form.value = defaultForm()
   formError.value = ''
+  resetImageState()
   showModal.value = true
 }
 
@@ -239,12 +268,43 @@ function openEdit(p) {
     featured: p.featured,
   }
   formError.value = ''
+  resetImageState()
   showModal.value = true
 }
 
 function closeModal() {
   showModal.value = false
   editingProduct.value = null
+}
+
+function compressImage(file, maxWidth = 1200, quality = 0.82) {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.onload = () => {
+      const scale = Math.min(1, maxWidth / img.width)
+      const canvas = document.createElement('canvas')
+      canvas.width = img.width * scale
+      canvas.height = img.height * scale
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
+      canvas.toBlob(resolve, 'image/jpeg', quality)
+    }
+    img.src = URL.createObjectURL(file)
+  })
+}
+
+async function handleFileChange(e) {
+  const file = e.target.files[0]
+  if (!file) return
+  uploadPreview.value = URL.createObjectURL(file)
+  uploadingImage.value = true
+  const compressed = await compressImage(file)
+  const filename = `products/${Date.now()}.jpg`
+  const { error } = await supabase.storage.from('website-assets').upload(filename, compressed, { contentType: 'image/jpeg', upsert: true })
+  if (!error) {
+    const { data: urlData } = supabase.storage.from('website-assets').getPublicUrl(filename)
+    form.value.image_url = urlData.publicUrl
+  }
+  uploadingImage.value = false
 }
 
 async function saveProduct() {
@@ -490,9 +550,8 @@ async function deleteProduct() {
 }
 
 .actions-cell {
-  display: flex;
-  gap: 4px;
-  justify-content: flex-end;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .action-btn {
@@ -567,6 +626,59 @@ async function deleteProduct() {
   gap: 20px;
   margin-bottom: 20px;
 }
+
+.image-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.image-tab {
+  background: none;
+  border: 1px solid var(--border);
+  padding: 6px 14px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--ivory-muted);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--font-ui);
+}
+.image-tab.active { color: var(--gold-light); border-color: var(--gold); background: rgba(180,155,110,0.07); }
+.image-tab:hover:not(.active) { color: var(--ivory); }
+
+.upload-area { display: flex; flex-direction: column; gap: 8px; }
+
+.file-input { display: none; }
+
+.upload-box {
+  border: 1px dashed var(--border);
+  border-radius: 2px;
+  height: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--ivory-muted);
+  font-size: 13px;
+  transition: border-color 0.2s;
+  overflow: hidden;
+}
+.upload-box:hover { border-color: var(--gold); color: var(--ivory); }
+
+.upload-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.upload-status { font-size: 12px; color: var(--ivory-muted); }
+
+.image-hint { font-size: 12px; color: var(--ivory-muted); margin-top: 6px; }
+.image-hint a { color: var(--gold); }
 
 .span-2 { grid-column: 1 / -1; }
 
