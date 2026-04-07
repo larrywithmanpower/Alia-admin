@@ -342,6 +342,13 @@ async function saveProduct() {
 
   let error
   if (editingProduct.value) {
+    // 若圖片換了，刪除舊圖
+    const oldUrl = editingProduct.value.image_url
+    const newUrl = form.value.image_url
+    if (oldUrl && newUrl !== oldUrl && oldUrl.includes('website-assets')) {
+      const path = oldUrl.split('/website-assets/')[1]
+      if (path) await supabase.storage.from('website-assets').remove([path])
+    }
     ;({ error } = await supabase.from('products').update(payload).eq('id', editingProduct.value.id))
   } else {
     ;({ error } = await supabase.from('products').insert(payload))
