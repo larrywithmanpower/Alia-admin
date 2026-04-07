@@ -9,6 +9,7 @@ export default defineNuxtConfig({
     baseURL: '/Alia-admin/',
     head: {
       link: [
+        { rel: 'icon', type: 'image/svg+xml', href: '/Alia-admin/favicon.svg' },
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
         {
