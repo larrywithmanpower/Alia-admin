@@ -123,7 +123,13 @@
                 <input v-if="imageMode === 'url'" v-model="form.image_url" type="url" placeholder="https://…" />
                 <div v-else class="upload-area">
                   <input ref="fileInput" type="file" accept="image/*" class="file-input" @change="handleFileChange" />
-                  <div class="upload-box" @click="fileInput.click()">
+                  <div class="upload-box"
+                    @click="fileInput.value.click()"
+                    @dragover.prevent="isDragging = true"
+                    @dragleave="isDragging = false"
+                    @drop.prevent="handleDrop"
+                    :class="{ dragging: isDragging }"
+                  >
                     <template v-if="uploadPreview">
                       <img :src="uploadPreview" class="upload-preview" />
                     </template>
@@ -209,6 +215,7 @@ const imageMode = ref('url')
 const fileInput = ref(null)
 const uploadPreview = ref(null)
 const uploadingImage = ref(false)
+const isDragging = ref(false)
 
 const defaultForm = () => ({
   name: '',
@@ -292,9 +299,20 @@ function compressImage(file, maxWidth = 1200, quality = 0.82) {
   })
 }
 
+async function handleDrop(e) {
+  isDragging.value = false
+  const file = e.dataTransfer.files[0]
+  if (!file || !file.type.startsWith('image/')) return
+  await uploadFile(file)
+}
+
 async function handleFileChange(e) {
   const file = e.target.files[0]
   if (!file) return
+  await uploadFile(file)
+}
+
+async function uploadFile(file) {
   uploadPreview.value = URL.createObjectURL(file)
   uploadingImage.value = true
   const compressed = await compressImage(file)
@@ -306,6 +324,7 @@ async function handleFileChange(e) {
   }
   uploadingImage.value = false
 }
+
 
 async function saveProduct() {
   saving.value = true
@@ -668,6 +687,7 @@ async function deleteProduct() {
   overflow: hidden;
 }
 .upload-box:hover { border-color: var(--gold); color: var(--ivory); }
+.upload-box.dragging { border-color: var(--gold); background: rgba(180,155,110,0.07); color: var(--ivory); }
 
 .upload-preview {
   width: 100%;
