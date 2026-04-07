@@ -59,7 +59,7 @@ const isDark = ref(true)
 
 onMounted(() => {
   const saved = localStorage.getItem('alia-admin-theme')
-  isDark.value = saved ? saved === 'dark' : true
+  isDark.value = saved ? saved === 'dark' : false
   applyTheme(isDark.value)
 })
 
