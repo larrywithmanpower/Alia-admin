@@ -1,5 +1,7 @@
 # Alia & Bra — 後台管理系統
 
+**線上網址：** https://larrywithmanpower.github.io/Alia-admin/
+
 Alia & Bra 品牌後台，用於管理商品上架與分類設定。
 
 ## 功能
