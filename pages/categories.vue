@@ -38,9 +38,26 @@
             <td colspan="3" class="empty-row">尚無分類</td>
           </tr>
           <tr v-for="cat in categories" :key="cat.id" class="cat-row">
-            <td class="cat-name">{{ cat.name }}</td>
+            <td class="cat-name-cell">
+              <template v-if="editingId === cat.id">
+                <form class="inline-edit-form" @submit.prevent="saveEdit(cat)">
+                  <input v-model="editName" class="inline-input" type="text" required @keydown.esc="editingId = null" />
+                  <button type="submit" class="action-btn save" title="儲存">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  </button>
+                  <button type="button" class="action-btn" title="取消" @click="editingId = null">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </form>
+                <p v-if="editError" class="inline-error">{{ editError }}</p>
+              </template>
+              <span v-else class="cat-name">{{ cat.name }}</span>
+            </td>
             <td class="cat-count">{{ productCountMap[cat.name] ?? 0 }} 件</td>
             <td class="actions-cell">
+              <button class="action-btn" title="改名" @click="startEdit(cat)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
               <button
                 class="action-btn danger"
                 title="刪除"
@@ -89,6 +106,9 @@ const newName = ref('')
 const addError = ref('')
 const saving = ref(false)
 const deleteTarget = ref(null)
+const editingId = ref(null)
+const editName = ref('')
+const editError = ref('')
 
 async function fetchAll() {
   const [{ data: cats }, { data: prods }] = await Promise.all([
@@ -115,6 +135,27 @@ async function addCategory() {
     addError.value = error.message.includes('unique') ? '此分類名稱已存在' : error.message
   } else {
     newName.value = ''
+    await fetchAll()
+  }
+  saving.value = false
+}
+
+function startEdit(cat) {
+  editingId.value = cat.id
+  editName.value = cat.name
+}
+
+async function saveEdit(cat) {
+  const name = editName.value.trim()
+  if (!name || name === cat.name) { editingId.value = null; return }
+  saving.value = true
+  editError.value = ''
+  const { error } = await supabase.from('categories').update({ name }).eq('id', cat.id)
+  if (error) {
+    editError.value = error.message
+  } else {
+    await supabase.from('products').update({ category: name }).eq('category', cat.name)
+    editingId.value = null
     await fetchAll()
   }
   saving.value = false
@@ -227,7 +268,33 @@ async function deleteCategory() {
 .cat-row:last-child td { border-bottom: none; }
 .cat-row:hover td { background: var(--surface-2); }
 
+.cat-name-cell { min-width: 200px; }
 .cat-name { color: var(--ivory); font-size: 16px; }
+
+.inline-edit-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.inline-input {
+  background: var(--surface-2);
+  border: 1px solid var(--gold);
+  border-radius: 2px;
+  padding: 6px 10px;
+  color: var(--ivory);
+  font-size: 15px;
+  outline: none;
+  flex: 1;
+}
+
+.action-btn.save:hover { color: var(--green); border-color: rgba(90,138,106,0.4); background: var(--green-dim); }
+
+.inline-error {
+  font-size: 12px;
+  color: #e74c3c;
+  margin-top: 4px;
+}
 .cat-count { color: var(--ivory-muted); font-size: 14px; }
 
 .empty-row {
@@ -250,6 +317,7 @@ async function deleteCategory() {
   align-items: center;
   cursor: pointer;
 }
+.action-btn:hover { color: var(--ivory); border-color: var(--border); background: var(--surface-2); }
 .action-btn.danger:hover { color: #e74c3c; border-color: rgba(192,57,43,0.3); background: var(--red-dim); }
 .action-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 .action-btn:disabled:hover { color: var(--ivory-muted); border-color: transparent; background: none; }
